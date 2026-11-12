@@ -1,3 +1,4 @@
+
 name: Build Samurai Clock APK
 
 on:
@@ -19,7 +20,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/project"
           unzip -q SamuraiClockLiveWallpaper-GitHub-ready.zip -d "$RUNNER_TEMP/project"
 
-      - name: Fix wallpaper description resource
+      - name: Fix Android source files
         working-directory: ${{ runner.temp }}/project/SamuraiClockLiveWallpaper
         run: |
           python3 - <<'PY'
@@ -34,32 +35,36 @@ jobs:
               'android:description="@string/wallpaper_description"',
               content
           )
-
           if count == 0:
-              raise SystemExit("Could not find android:description in wallpaper.xml")
+              raise SystemExit("Wallpaper description not found")
 
           xml.write_text(content)
 
           values = Path("app/src/main/res/values")
           values.mkdir(parents=True, exist_ok=True)
-
           strings = values / "strings.xml"
-          if strings.exists():
-              existing = strings.read_text()
-              if "wallpaper_description" not in existing:
-                  existing = existing.replace(
-                      "</resources>",
-                      '    <string name="wallpaper_description">Live clock over samurai and cherry blossom artwork</string>\n</resources>'
-                  )
-                  strings.write_text(existing)
-          else:
-              strings.write_text(
-                  '<resources>\n'
-                  '    <string name="wallpaper_description">Live clock over samurai and cherry blossom artwork</string>\n'
-                  '</resources>\n'
-              )
 
-          print("Wallpaper description fixed successfully.")
+          description = '<string name="wallpaper_description">Live clock over samurai and cherry blossom artwork</string>'
+
+          if strings.exists():
+              content = strings.read_text()
+              if "wallpaper_description" not in content:
+                  content = content.replace("</resources>", f"    {description}\n</resources>")
+                  strings.write_text(content)
+          else:
+              strings.write_text(f"<resources>\n    {description}\n</resources>\n")
+
+          java = Path("app/src/main/java/com/example/samuraiclock/SamuraiWallpaperService.java")
+          code = java.read_text()
+
+          old = 'Typeface.create("sans-serif", Typeface.MEDIUM)'
+          new = 'Typeface.create("sans-serif-medium", Typeface.NORMAL)'
+
+          if old not in code:
+              raise SystemExit("Expected Typeface.MEDIUM expression not found")
+
+          java.write_text(code.replace(old, new))
+          print("XML and Java fixes applied successfully.")
           PY
 
       - name: Set up Java
