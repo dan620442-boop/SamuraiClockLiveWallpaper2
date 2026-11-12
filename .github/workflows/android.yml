@@ -4,11 +4,12 @@ name: Build Samurai Clock APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -17,8 +18,9 @@ jobs:
       - name: Extract Android project
         run: |
           mkdir -p "$RUNNER_TEMP/project"
-          unzip -q SamuraiClockLiveWallpaper-GitHub-ready.zip \
-            -d "$RUNNER_TEMP/project"
+          unzip -q SamuraiClockLiveWallpaper-GitHub-ready.zip -d "$RUNNER_TEMP/project"
+          echo "Extracted project:"
+          ls -la "$RUNNER_TEMP/project"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -28,9 +30,12 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Install Android SDK packages
         run: |
+          yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
@@ -47,3 +52,4 @@ jobs:
         with:
           name: SamuraiClock-APK
           path: ${{ runner.temp }}/project/SamuraiClockLiveWallpaper/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
